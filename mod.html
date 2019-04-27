@@ -1,0 +1,390 @@
+<!doctype html> 
+<html lang="en"> 
+<head> 
+    <meta charset="UTF-8" />
+    <title>Making your first Phaser 3 Game - Part 10</title>
+    <script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
+    <style type="text/css">
+        body {
+            margin: 0;
+        }
+    </style>
+</head>
+<body>
+
+<script type="text/javascript">
+
+var config = {
+    type: Phaser.AUTO,
+    width: 800,
+    height: 600,
+    physics: {
+        default: 'arcade',
+        arcade: {
+            gravity: { y: 300 },
+            debug: false
+        }
+    },
+    scene: {
+        preload: preload,
+        create: create,
+        update: update
+    }
+};
+
+var player;
+var stars;
+var bombs;
+var platforms;
+var cursors;
+var score = 0;
+var gameOver = false;
+var scoreText;
+var ship;
+var lasers;
+var blast;
+var explosion;
+
+var game = new Phaser.Game(config);
+
+function preload ()
+{
+    this.load.image('sky', 'assets/sky.png');
+    this.load.image('ground', 'assets/platform.png');
+    this.load.image('star', 'assets/star.png');
+    this.load.image('bomb', 'assets/bomb.png');
+    this.load.image('nave', 'assets/nave_reposo.png');
+    this.load.image('laser', 'assets/laser_3.png');
+    this.load.image('dragon', 'assets/cougar_dragonsun.png');
+    this.load.spritesheet('dude', 'assets/dude.png', { frameWidth: 32, frameHeight: 48 });
+    this.load.spritesheet('explosion', 'assets/explosion.png', { frameWidth: 64, frameHeight: 64, endFrame: 23 });
+
+    this.load.audio('theme', 'assets/oedipus_wizball_highscore.mp3');
+
+
+    this.load.audio('blast', 'assets/blaster.mp3');
+    this.load.audio('explosion', 'assets/explosion.mp3');
+}
+
+var dragon;
+var music;
+
+function create ()
+{
+    my_scene = this;
+
+    blast = this.sound.add('blast', { loop: false });
+    explosion = this.sound.add('explosion', { loop: false });
+
+    //  A simple background for our game
+    this.add.image(400, 300, 'sky');
+
+    dragon = my_scene.add.tileSprite(400, 300, 800, 600, 'dragon');
+    dragon.visible = false;
+
+    //  The platforms group contains the ground and the 2 ledges we can jump on
+    platforms = this.physics.add.staticGroup();
+
+    //  Here we create the ground.
+    //  Scale it to fit the width of the game (the original sprite is 400x32 in size)
+    platforms.create(400, 568, 'ground').setScale(2).refreshBody();
+
+    //  Now let's create some ledges
+    platforms.create(600, 400, 'ground');
+    platforms.create(50, 250, 'ground');
+    platforms.create(750, 220, 'ground');
+
+    ship = this.add.sprite(100, 100, 'nave');
+    ship.setVisible(false);
+    this.input.keyboard.on('keydown_P', function (event) {
+        // keydown- not working, see
+        // https://github.com/photonstorm/phaser/blob/902d04d55e5786133f49b09fad9a46edd9b8e388/src/input/keyboard/KeyboardPlugin.js#L714-L716
+        ship.setVisible(!ship.visible);
+        // camera = my_scene.cameras.add(0, 0, 400, 300);
+        // camera.setBackgroundColor('rgba(255, 0, 0, 0.5)');
+    });
+
+    // The player and its settings
+    player = this.physics.add.sprite(100, 400, 'dude');
+
+    //  Player physics properties. Give the little guy a slight bounce.
+    player.setBounce(0.2);
+    player.setCollideWorldBounds(true);
+
+    //  Our player animations, turning, walking left and walking right.
+    this.anims.create({
+        key: 'left',
+        frames: this.anims.generateFrameNumbers('dude', { start: 0, end: 3 }),
+        frameRate: 10,
+        repeat: -1
+    });
+
+    this.anims.create({
+        key: 'turn',
+        frames: [ { key: 'dude', frame: 4 } ],
+        frameRate: 20
+    });
+
+    this.anims.create({
+        key: 'right',
+        frames: this.anims.generateFrameNumbers('dude', { start: 5, end: 8 }),
+        frameRate: 10,
+        repeat: -1
+    });
+
+    this.anims.create({
+        key: 'left-right',
+        frames: this.anims.generateFrameNumbers('dude', { start: 0, end: 8 }),
+        frameRate: 3,
+        repeat: -1
+    });
+
+    this.anims.create({
+        key: 'explodeAnimation',
+        frames: this.anims.generateFrameNumbers('explosion', { start: 0, end: 23, first: 23 }),
+        frameRate: 20,
+        repeat: 0
+    });
+
+    //  Input Events
+    cursors = this.input.keyboard.createCursorKeys();
+
+    //  Some stars to collect, 12 in total, evenly spaced 70 pixels apart along the x axis
+    stars = this.physics.add.group({
+        key: 'dude',
+        repeat: 11,
+        setXY: { x: 12, y: 0, stepX: 70 },
+        allowGravity: true,
+        dragY: -030,
+    });
+
+    stars.children.iterate(function (child) {
+
+        //  Give each star a slightly different bounce
+        child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
+        child.anims.play('left-right', true);
+    });
+
+    bombs = this.physics.add.group({frictionX: 100});
+
+    lasers = this.physics.add.group({
+        key: 'laser',
+        allowGravity: false,
+    });
+    
+    //  The score
+    scoreText = this.add.text(16, 16, 'score: 0', { fontSize: '32px', fill: '#000' });
+
+    //  Collide the player and the stars with the platforms
+    this.physics.add.collider(player, platforms);
+    this.physics.add.collider(stars, platforms);
+    this.physics.add.collider(bombs, platforms);
+
+    //  Checks to see if the player overlaps with any of the stars, if he does call the collectStar function
+    this.physics.add.overlap(player, stars, collectStar, null, this);
+    this.physics.add.overlap(player, platforms, overlap_platform, null, this);
+
+    this.physics.add.collider(player, bombs, hitBomb, null, this);
+
+    this.physics.add.collider(lasers, bombs, destroyBomb, null, this);
+}
+
+function update ()
+{
+    if (gameOver)
+    {
+        return;
+    }
+
+    var pointer = my_scene.input.activePointer;
+    if (pointer.isDown) {
+        var touchX = pointer.x;
+        var touchY = pointer.y;
+
+        if (touchX < player.x)
+        {
+            player.setVelocityX(-260);
+
+            player.anims.play('left', true);
+        }
+        else
+        {
+            player.setVelocityX(260);
+
+            player.anims.play('right', true);
+        }
+
+        if (touchY < 300) {
+            player.setVelocityY(-330);
+        } else if (touchY > 550) {
+            player.setScale(1, Math.max(player.scaleY * .9, 1));
+        }
+    }
+    else
+    {
+        if (cursors.left.isDown)
+        {
+            player.setVelocityX(-260);
+
+            player.anims.play('left', true);
+        }
+        else if (cursors.right.isDown)
+        {
+            player.setVelocityX(260);
+
+            player.anims.play('right', true);
+        }
+        else
+        {
+            player.setVelocityX(0);
+
+            player.anims.play('turn');
+        }
+
+        if (cursors.up.isDown)
+        {
+            player.setVelocityY(-330);
+        }
+    }
+
+    if (cursors.up.isDown)
+    {
+        player.setVelocityY(-330);
+    }
+
+    if (cursors.down.isDown)
+    {
+        player.setScale(1, Math.max(player.scaleY * .9, 1));
+    }
+
+    // Controles de la nave fantasma.
+    angle_speed = 8;
+    move_speed = 8;
+    laser_speed = 450;
+    if (my_scene.input.keyboard.addKey('A').isDown)
+    {
+        ship.setAngle(ship.angle - angle_speed);
+    }
+    else if (my_scene.input.keyboard.addKey('D').isDown)
+    {
+        ship.setAngle(ship.angle + angle_speed);
+    }
+    else if (my_scene.input.keyboard.addKey('W').isDown)
+    {
+        ship.x += Math.cos(ship.rotation) * move_speed;
+        ship.y += Math.sin(ship.rotation) * move_speed;
+    }
+    else if (my_scene.input.keyboard.addKey('S').isDown)
+    {
+        ship.x -= Math.cos(ship.rotation) * move_speed;
+        ship.y -= Math.sin(ship.rotation) * move_speed;
+    }
+
+    if (cursors.space.isDown)
+    {
+        let laser = lasers.create(ship.x, ship.y, 'laser');
+        laser.setCollideWorldBounds(false);
+        laser.allowGravity = false;
+        laser.setAngle(ship.angle);
+        laser.setVelocity(Math.cos(laser.rotation) * laser_speed,
+                        Math.sin(laser.rotation) * laser_speed);
+
+        blast.play();
+    }
+
+
+//     stars.children.iterate(function (child) {
+
+// child.enableBody(true, child.x, 0, true, true);
+
+// });
+
+    // lasers.forEach(function(laser, index, array) {
+    //     laser.x += Math.cos(laser.rotation) * laser_speed;
+    //     laser.y += Math.sin(laser.rotation) * laser_speed;
+
+    //     // lasers.splice(index, 1)
+    // });
+}
+
+var bombs_destroyed = 0;
+function destroyBomb (laser, bomb)
+{
+    laser.disableBody(true, true);
+    bomb.disableBody(true, true);
+    my_scene.add.sprite(bomb.x, bomb.y, 'explosion').play('explodeAnimation');
+    explosion.play();
+    bombs.remove(bomb);
+    
+    bombs_destroyed += 1;
+
+    if (bombs_destroyed > 20 && typeof music == "undefined")
+    {
+        music = my_scene.sound.add('theme', { loop: true });
+        dragon.visible = true;
+        ship.setScale(2);
+        my_scene.time.delayedCall(5000, function() {music.play();});  // delay in ms
+    }
+}
+
+function collectStar (player, star)
+{
+    star.disableBody(true, true);
+
+    //  Add and update the score
+    score += 1;
+    scoreText.setText('Score: ' + score);
+
+    player.y = player.y - player.displayHeight * .125;
+    player.setScale(1, Math.min(5, (player.scaleY * 1.25)));
+
+    //  A new batch of stars to collect
+    stars.children.iterate(function (child) {
+
+        child.enableBody(true, child.x, 0, true, true);
+        if (ship.visible)
+        {
+            child.setBounce(1);
+            child.setCollideWorldBounds(true);
+            child.setVelocity(Phaser.Math.Between(-200, 200), 20);
+            child.allowGravity = false;
+            child.setDragY(0);
+        }
+    });
+
+    var x = (player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0, 400);
+
+    if (bombs.getLength() < 50) {
+        add_bombs = 2;
+        if (ship.visible) add_bombs += 7;
+        for (i = 0; i < add_bombs; i++) {
+            var bomb = bombs.create(x, 16, 'bomb');
+            bomb.setBounce(1);
+            bomb.setCollideWorldBounds(true);
+            bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
+            bomb.allowGravity = false;
+        }
+    }
+}
+
+function hitBomb (player, bomb)
+{
+    // this.physics.pause();
+
+    player.setTint(0xff0000);
+
+    //gameOver = true;
+}
+
+function overlap_platform (player, bomb)
+{
+    console.log("overlap");
+    // this.physics.pause();
+
+    //gameOver = true;
+}
+
+</script>
+
+</body>
+</html>
