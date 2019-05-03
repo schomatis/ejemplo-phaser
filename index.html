@@ -210,7 +210,13 @@ function collectStar (player, star)
     score += 1;
     scoreText.setText('Score: ' + score);
 
+    let prev_height = player.displayHeight;
     player.setScale(1, Math.min(5, (player.scaleY * 1.25)));
+    if (player.displayHeight > prev_height)
+    {
+        player.y = player.y - (player.displayHeight - prev_height) / 2;
+        // El jugador crece igual tanto para arriba como para abajo.
+    }
 
     //  A new batch of stars to collect
     stars.children.iterate(function (child) {
