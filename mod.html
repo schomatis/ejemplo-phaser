@@ -310,9 +310,9 @@ function update ()
 var bombs_destroyed = 0;
 function destroyBomb (laser, bomb)
 {
-    laser.disableBody(true, true);
-    bomb.disableBody(true, true);
-    my_scene.add.sprite(bomb.x, bomb.y, 'explosion').play('explodeAnimation');
+    laser.destroy();
+    bomb.destroy();
+    my_scene.add.sprite(bomb.x, bomb.y, 'explosion').play('explodeAnimation').destroy();
     explosion.play();
     bombs.remove(bomb);
     
