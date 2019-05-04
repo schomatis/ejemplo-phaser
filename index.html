@@ -14,191 +14,372 @@
 
 <script type="text/javascript">
 
-var config = {
-    type: Phaser.AUTO,
-    width: 800,
-    height: 600,
-    physics: {
-        default: 'arcade',
-        arcade: {
-            gravity: { y: 300 },
-            debug: false
-        }
-    },
-    scene: {
-        preload: preload,
-        create: create,
-        update: update
-    }
-};
+/*
 
-var player;
-var stars;
-var bombs;
-var platforms;
-var cursors;
-var score = 0;
-var gameOver = false;
-var scoreText;
+Ejemplo con el framework Phaser
+===============================
 
-var game = new Phaser.Game(config);
+https://phaser.io/tutorials/making-your-first-phaser-3-game-spanish
 
-function preload ()
-{
-    this.load.image('sky', 'assets/sky.png');
-    this.load.image('ground', 'assets/platform.png');
-    this.load.image('star', 'assets/star.png');
-    this.load.image('bomb', 'assets/bomb.png');
-    this.load.spritesheet('dude', 'assets/dude.png', { frameWidth: 32, frameHeight: 48 });
+Si el servidor (`http-serve`) esta corriendo abrir el navegador en la direccion
+http://localhost:8080/ para que aparezca. Jugar un poco para entender las reglas
+(simples) del juego y luego venir al codigo y poder entender por que funciona asi
+y como modificarlo.
+
+Cuando se modifique este archivo refrescar (F5) el navegador para que tome los
+cambios. Dejar abierta la consola del navegador (F12 en Chrome, seleccionar del menu
+superior `console`) para que nos avise si hay algo mal en nuestro codigo (aparecera
+un error en rojo).
+
+El objecto principal del juego es la escena (a la que llamamos con las funciones de
+abajo). Tiene un eje de coordenadas X/Y (horizontal/vertical) donde X crece hacia la
+derecha y Y hacia ABAJO (cuidado, crece al reves de lo que estamos acostumbrados).
+
+*/
+
+var escena;
+
+var agregar_imagen = function(a,b,c) {
+    return escena.add.image(a,b,c)
 }
 
-function create ()
+var agregar_imagen = function(a,b,c) {
+    return escena.add.image(a,b,c)
+}
+
+var agregar_animacion = function(config) {
+    return escena.anims.create(config)
+}
+
+var agregar_texto = function(x, y, texto, configuracion) {
+    return escena.add.text(x, y, texto, configuracion)
+}
+
+
+
+var fisica = {};
+
+fisica.agregar_grupo_estatico = function() {
+    return escena.physics.add.staticGroup();
+}
+
+fisica.agregar_grupo_dinamico = function() {
+    return escena.physics.add.group();
+}
+
+fisica.agregar_sprite = function(a,b,c) {
+    return escena.physics.add.sprite(a,b,c);
+}
+
+fisica.agregar_regla_colision = function(objeto_1, objeto_2) {
+    return escena.physics.add.collider(objeto_1, objeto_2);
+}
+
+fisica.agregar_funcion_de_solapamiento = function(objeto_1, objeto_2, funcion, a, b) {
+    return escena.physics.add.overlap(objeto_1, objeto_2, funcion, a, b);
+}
+
+fisica.agregar_funcion_de_colision = function(objeto_1, objeto_2, funcion, a, b) {
+    return escena.physics.add.collider(objeto_1, objeto_2, funcion, a, b);
+}
+
+// Esta funcion crea la escena del juego colocando a los distintos objectos en la
+// pantalla y ajustando sus propiedades.
+function crear ()
 {
-    //  A simple background for our game
-    this.add.image(400, 300, 'sky');
+    // Podemos ignorar esta linea.
+    escena = this;
 
-    //  The platforms group contains the ground and the 2 ledges we can jump on
-    platforms = this.physics.add.staticGroup();
+    // Tal vez esto deberia estar en el preload().
+    // agregar_imagen = this.add.image.bind(this);
 
-    //  Here we create the ground.
-    //  Scale it to fit the width of the game (the original sprite is 400x32 in size)
-    platforms.create(400, 568, 'ground').setScale(2).refreshBody();
+    // Agregamos la imagen de fondo con un cielo, las coordenadas X,Y = [400,300]
+    // corresponden al medio de la pantalla, esto es porque el centro de la imagen
+    // es la que especificamos en el X,Y (no una esquina).
+    agregar_imagen(400, 300, 'cielo');
 
-    //  Now let's create some ledges
-    platforms.create(600, 400, 'ground');
-    platforms.create(50, 250, 'ground');
-    platforms.create(750, 220, 'ground');
+    // Agregamos un grupo de imagenes estaticas (que no se mueven ni por gravedad
+    // ni por golpes) para hacer las plataformas del juego.
+    plataformas = fisica.agregar_grupo_estatico();
+    // Creamos luego 4 plataformas dentro de este grupo indicando X,Y y la imagen a usar.
+    plataformas.create(600, 400, 'piso');
+    plataformas.create(50, 250, 'piso');
+    plataformas.create(750, 220, 'piso');
+    plataformas.create(400, 568, 'piso').setScale(2).refreshBody();
+    // A la ultima plataforma que creamos la agrandamos por 2 (`setScale`).
 
-    // The player and its settings
-    player = this.physics.add.sprite(100, 450, 'dude');
+    // Agregamos al protagonista.
+    jugador = fisica.agregar_sprite(100, 450, 'chabon');
+    // Le ponemos un rebote.
+    jugador.setBounce(0.2);
+    // Le decimos al juego que no lo deje escapar de la escena, que rebote.
+    jugador.setCollideWorldBounds(true);
 
-    //  Player physics properties. Give the little guy a slight bounce.
-    player.setBounce(0.2);
-    player.setCollideWorldBounds(true);
-
-    //  Our player animations, turning, walking left and walking right.
-    this.anims.create({
-        key: 'left',
-        frames: this.anims.generateFrameNumbers('dude', { start: 0, end: 3 }),
+    // Cramos las animaciones para nuestro jugador que van a aparecer cuando
+    // corre o esta quieto.
+    agregar_animacion({
+        // Nombre de la animacion:
+        key: 'corre_a_la_izquierda',
+        // Cuadros de la imagen `chabon` para usar:
+        frames: this.anims.generateFrameNumbers('chabon', { start: 0, end: 3 }),
+        // Cuadros por segundo:
         frameRate: 10,
+        // Repetir en forma continua:
         repeat: -1
     });
 
-    this.anims.create({
-        key: 'turn',
-        frames: [ { key: 'dude', frame: 4 } ],
+    agregar_animacion({
+        // Nombre de la animacion:
+        key: 'quieto',
+        // Cuadros de la imagen `chabon` para usar:
+        frames: [ { key: 'chabon', frame: 4 } ],
+        // Cuadros por segundo:
         frameRate: 20
+        // Como es un solo cuadro no indicamos la repeticion.
     });
 
-    this.anims.create({
-        key: 'right',
-        frames: this.anims.generateFrameNumbers('dude', { start: 5, end: 8 }),
+    agregar_animacion({
+        // Nombre de la animacion:
+        key: 'corre_a_la_derecha',
+        // Cuadros de la imagen `chabon` para usar:
+        frames: this.anims.generateFrameNumbers('chabon', { start: 5, end: 8 }),
+        // Cuadros por segundo:
         frameRate: 10,
+        // Repetir en forma continua:
         repeat: -1
     });
 
-    //  Input Events
-    cursors = this.input.keyboard.createCursorKeys();
+    // Objeto que registra las flechas pulsadas del teclado.
+    flechas_teclado = this.input.keyboard.createCursorKeys();
 
-    //  Some stars to collect, 12 in total, evenly spaced 70 pixels apart along the x axis
-    stars = this.physics.add.group({
-        key: 'star',
+    // Agregamos un grupo de imagenes *dinamicas* (que se mueven por gravedad
+    // y demas efectos fisicos) para las estrellas.
+    estrellas = this.physics.add.group({
+        // Nombre del grupo:
+        key: 'estrella',
+        // Cantidad (original mas las repeticiones):
         repeat: 11,
+        // Posicion X,Y original y el intervalo `stepX` en horizontal
+        // entre cada estrella del grupo.
         setXY: { x: 12, y: 0, stepX: 70 }
     });
 
-    stars.children.iterate(function (child) {
-
-        //  Give each star a slightly different bounce
-        child.setBounceY(Phaser.Math.FloatBetween(0.4, 0.8));
-
+    // Iterar las estrellas (pasar por cada una del grupo creado) para aplicar
+    // alguna propiedad. Este ciclo es mas practico que repetir 12 las propiedades
+    // de cada estrella.
+    estrellas.children.iterate(function (estrella) {
+        // Aplicar un rebote aleatorio para cada una.
+        // Generamos un valor entre el minimo y maximo especificados:
+        rebote_aleatorio = Phaser.Math.FloatBetween(0.4, 0.8);
+        // y lo aplicamos a *esta* estrella (cada estrella tendra su
+        // propio rebote distinto a las otras).
+        estrella.setBounceY(rebote_aleatorio);
     });
 
-    bombs = this.physics.add.group();
+    // Similar a las estrellas, creamos *otro* grupo dinamico para las bombas,
+    // pero las bombas no las creamos ahora. Inicialmente no hay bombas, se agregan
+    // al recolectar todas las estrellas.
+    bombas = fisica.agregar_grupo_dinamico();
 
-    //  The score
-    scoreText = this.add.text(16, 16, 'score: 0', { fontSize: '32px', fill: '#000' });
+    // Creamos un texto que va a reportar el puntaje actual (que sube
+    // con cada estrella recolectada).
+    texto_puntaje = agregar_texto(16, 16, 'puntaje: 0',
+        {
+            fontSize: '32px', // Tamaño.
+            fill: '#000'      // Color.
+        }
+    );
 
-    //  Collide the player and the stars with the platforms
-    this.physics.add.collider(player, platforms);
-    this.physics.add.collider(stars, platforms);
-    this.physics.add.collider(bombs, platforms);
+    // Agregamos reglas para que el juego active las colisiones entre distintos
+    // objetos fisicos creados (sino las agregamos los objectos pasan unos sobre
+    // otros).
+    fisica.agregar_regla_colision(jugador, plataformas);
+    fisica.agregar_regla_colision(estrellas, plataformas);
+    fisica.agregar_regla_colision(bombas, plataformas);
 
-    //  Checks to see if the player overlaps with any of the stars, if he does call the collectStar function
-    this.physics.add.overlap(player, stars, collectStar, null, this);
+    // Establecemos que al haber un solapamiento entre el objeto `jugador`
+    // y un objeto del grupo `estrellas` se debe llamar a la funcion
+    // `recolectar_estrella` (que se encarga de esa logica).
+    fisica.agregar_funcion_de_solapamiento(jugador, estrellas, recolectar_estrella, null, this);
 
-    this.physics.add.collider(player, bombs, hitBomb, null, this);
+    // Establecemos que al haber una colision entre el objeto `jugador`
+    // y un objeto del grupo `bombas` se debe llamar a la funcion
+    // `estalla_bomba` (que se encarga de esa logica).
+    fisica.agregar_funcion_de_colision(jugador, bombas, estalla_bomba, null, this);
 }
 
-function update ()
+// Configuracion del juego.
+var config = {
+    // Ancho (en pixeles):
+    width: 800,
+    // Alto:
+    height: 600,
+
+    // Motor de fisica:
+    physics: {
+        arcade: {
+            // Gravedad (el valor positivo apunta hacia abajo).
+            gravity: { y: 300 },
+            // Modo debug: agregar un recuadro para mostrar los objetos
+            // fisicos (que no necesariamente coincidan con las imagenes
+            // que los representan). Para activarlo cambiar el `false`
+            // (apagado) a `true` (prendido).
+            debug: false
+        },
+        default: 'arcade',
+    },
+    // Funciones de la escena definidas aqui.
+    scene: {
+        preload: cargar_imagenes,
+        create: crear,
+        update: actualizar_escena
+    },
+
+    type: Phaser.AUTO,
+};
+// Crear un juego nuevo con las opciones anteriores.
+var juego = new Phaser.Game(config);
+
+// Variables globales utilizadas a traves de distintas funciones.
+var jugador;
+var estrellas;
+var bombas;
+var plataformas;
+var flechas_teclado;
+var valor_puntaje = 0;
+var fin_del_juego = false;
+var texto_puntaje;
+
+// Funcion que carga las imagenes de los distintos objetos, podemos ver
+// los originales llendo a http://localhost:8080/assets.
+function cargar_imagenes ()
 {
-    if (gameOver)
+    this.load.image('cielo', 'assets/sky.png');
+    this.load.image('piso', 'assets/platform.png');
+    this.load.image('estrella', 'assets/star.png');
+    this.load.image('bomba', 'assets/bomb.png');
+
+    // Esta imagen en realidad contiene varios cuadros juntos del `chabon`
+    // en los distintos tipos de movimiento.
+    this.load.spritesheet('chabon', 'assets/dude.png', { frameWidth: 32, frameHeight: 48 });
+
+    // FIXME: Agregar funcion para `this.load.image`.
+}
+
+// Esta funcion se ejecuta varias veces por segundo para actualizar la
+// escena que ve el usuario segun lo que haya sucedido, por ejemplo,
+// mover el jugador si alguien presiona una tecla, recolectar una estrella
+// si el jugador para por ella, chocar con una bomba, etc.
+function actualizar_escena()
+{
+    // Si se termino el juego (chocamos con una bomba) no hace falta
+    // actualizar nada terminar aca (llamando a `return`).
+    if (fin_del_juego)
     {
         return;
     }
 
-    if (cursors.left.isDown)
+// FIXME:nombre de las flechas.
+    // SI la flecha de la izquierda esta presionada:
+    if (flechas_teclado.left.isDown)
     {
-        player.setVelocityX(-160);
-
-        player.anims.play('left', true);
+        // entonces ajustamos la velocidad del jugador hacia
+        // la izquierda (X negativa)
+        jugador.setVelocityX(-160);
+        // y ponemos la animacion correspondiente.
+        jugador.anims.play('corre_a_la_izquierda', true);
     }
-    else if (cursors.right.isDown)
+    // SI NO se cumple lo anterior, y SI en cambio la flecha de
+    // la derecha esta presionada:
+    else if (flechas_teclado.right.isDown)
     {
-        player.setVelocityX(160);
-
-        player.anims.play('right', true);
+        // ajustamos velociada derecha (X positiva)
+        jugador.setVelocityX(160);
+        // y ponemos la animacion.
+        jugador.anims.play('corre_a_la_derecha', true);
     }
+    // SI NO se cumple nada de lo anterior hacemos (sin preguntar
+    // por ninguna otra condicion):
     else
     {
-        player.setVelocityX(0);
-
-        player.anims.play('turn');
+        // la velocidad la ponemos en cero (jugador quieto)
+        jugador.setVelocityX(0);
+        // y la animacion.
+        jugador.anims.play('quieto');
     }
 
-    if (cursors.up.isDown && player.body.touching.down)
+    if (flechas_teclado.up.isDown && jugador.body.touching.down)
     {
-        player.setVelocityY(-330);
+        jugador.setVelocityY(-330);
     }
 }
 
-function collectStar (player, star)
+// Funciona que se ejecuta cuando el jugador recolecta una estrella.
+function recolectar_estrella (jugador, estrella)
 {
-    star.disableBody(true, true);
+    // Apagamos la estrella, no se muestra mas por ahora (pero no
+    // se destruye).
+    estrella.disableBody(true, true);
 
-    //  Add and update the score
-    score += 10;
-    scoreText.setText('Score: ' + score);
+    // Ajustamos el puntaje sumando 10 puntos por la estrella recolectada.
+    valor_puntaje += 10;
+    // Ponemos el texto del puntaje con el nuevo numero
+    texto_puntaje.setText('puntaje: ' + valor_puntaje);
+    //                     ^ texto      ^ numero (variable) que aumenta
+    //                                     en cada llamada a la funcion.
 
-    if (stars.countActive(true) === 0)
+    // SI ahora el grupo de las estrellas no tienen ninguna activa (porque
+    // el jugador ya recolecto todas):
+    if (estrellas.countActive(true) === 0)
     {
-        //  A new batch of stars to collect
-        stars.children.iterate(function (child) {
-
-            child.enableBody(true, child.x, 0, true, true);
-
+        // Volvemos a activar todas las estrellas prendiendo nuevamente,
+        // para esto pasamos por cada `estrella` del grupo `estrellas`:
+        estrellas.children.iterate(function (estrella) {
+            // y llamamos a la funcion que las prende, reajustando el X y el Y,
+            // en este caso dejando el X como esta (`estrella.x`) y poniendo el Y
+            // en cero (o sea, arriba de todo, desde donde volvera a caer).
+            estrella.enableBody(true, estrella.x, 0, true, true);
         });
 
-        var x = (player.x < 400) ? Phaser.Math.Between(400, 800) : Phaser.Math.Between(0, 400);
-
-        var bomb = bombs.create(x, 16, 'bomb');
-        bomb.setBounce(1);
-        bomb.setCollideWorldBounds(true);
-        bomb.setVelocity(Phaser.Math.Between(-200, 200), 20);
-        bomb.allowGravity = true;
-
+        // Ahora creamos una bomba, elegimos primero un valor aleatorio para el X
+        // entre 0 (extremo izquierdo) y 800 (extremo derecho).
+        var bomba_x = Phaser.Math.Between(0, 800);
+        // Creamos la bomba con ese X y un Y fijo.
+        var nueva_bomba = bombas.create(bomba_x, 16, 'bomba');
+        // Ajustamos su rebote:
+        nueva_bomba.setBounce(1);
+        // Decimos que no puede escapar del mundo, o sea, rebota contra
+        // los extremos de la escena (si pasamos el `true` a `false`
+        // deshabilitamos esta regla):
+        nueva_bomba.setCollideWorldBounds(true);
+        // Elegimos un valor aleatorio para su velocidad en X:
+        var velocidad_x = Phaser.Math.Between(-200, 200);
+        // y la ajustamos acorde con un valor de velocidad en Y positivo
+        // (para que se diriga hacia abajo):
+        nueva_bomba.setVelocity(velocidad_x, 20);
+        // Le decimos al juego que la bomba este afectada por la gravedad
+        // (para apagar esto pasar de `true` a `false`):
+        nueva_bomba.allowGravity = true;
     }
 }
 
-function hitBomb (player, bomb)
+// Funcion que se llama cuando el jugador choca contra una bomba.
+function estalla_bomba(jugador, bomba)
 {
+    // Paramos la fisica del juego, todo se queda quieto.
     this.physics.pause();
 
-    player.setTint(0xff0000);
+    // Pintamos al jugador de rojo:
+    jugador.setTint(0xff0000);
 
-    player.anims.play('turn');
+    // Dejamos la animacion del jugador `quieto` (en vez de la de
+    // caminar a la derecha o izquierda). Esto es necesario porque
+    // aunque la parte fisica del juego (choque de los objetos en
+    // movimiento) se detenga las animaciones se controlan aparte.
+    jugador.anims.play('quieto');
 
-    gameOver = true;
+    // Marcamos el fin del juego prendiendo esta variable:
+    fin_del_juego = true;
 }
 
 </script>
