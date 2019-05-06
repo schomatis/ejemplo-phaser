@@ -1,8 +1,8 @@
 <!doctype html> 
-<html lang="en"> 
+<html lang="es"> 
 <head> 
     <meta charset="UTF-8" />
-    <title>Making your first Phaser 3 Game - Part 10</title>
+    <title>Primer ejemplo con la herramienta Phaser</title>
     <script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
     <style type="text/css">
         body {
@@ -37,55 +37,9 @@ derecha y Y hacia ABAJO (cuidado, crece al reves de lo que estamos acostumbrados
 
 */
 
-var escena;
-
-var agregar_imagen = function(a,b,c) {
-    return escena.add.image(a,b,c)
-}
-
-var agregar_imagen = function(a,b,c) {
-    return escena.add.image(a,b,c)
-}
-
-var agregar_animacion = function(config) {
-    return escena.anims.create(config)
-}
-
-var agregar_texto = function(x, y, texto, configuracion) {
-    return escena.add.text(x, y, texto, configuracion)
-}
-
-
-
-var fisica = {};
-
-fisica.agregar_grupo_estatico = function() {
-    return escena.physics.add.staticGroup();
-}
-
-fisica.agregar_grupo_dinamico = function() {
-    return escena.physics.add.group();
-}
-
-fisica.agregar_sprite = function(a,b,c) {
-    return escena.physics.add.sprite(a,b,c);
-}
-
-fisica.agregar_regla_colision = function(objeto_1, objeto_2) {
-    return escena.physics.add.collider(objeto_1, objeto_2);
-}
-
-fisica.agregar_funcion_de_solapamiento = function(objeto_1, objeto_2, funcion, a, b) {
-    return escena.physics.add.overlap(objeto_1, objeto_2, funcion, a, b);
-}
-
-fisica.agregar_funcion_de_colision = function(objeto_1, objeto_2, funcion, a, b) {
-    return escena.physics.add.collider(objeto_1, objeto_2, funcion, a, b);
-}
-
 // Esta funcion crea la escena del juego colocando a los distintos objectos en la
 // pantalla y ajustando sus propiedades.
-function crear ()
+function crear()
 {
     // Podemos ignorar esta linea.
     escena = this;
@@ -200,12 +154,12 @@ function crear ()
     // Establecemos que al haber un solapamiento entre el objeto `jugador`
     // y un objeto del grupo `estrellas` se debe llamar a la funcion
     // `recolectar_estrella` (que se encarga de esa logica).
-    fisica.agregar_funcion_de_solapamiento(jugador, estrellas, recolectar_estrella, null, this);
+    fisica.agregar_funcion_de_solapamiento(jugador, estrellas, recolectar_estrella);
 
     // Establecemos que al haber una colision entre el objeto `jugador`
     // y un objeto del grupo `bombas` se debe llamar a la funcion
     // `estalla_bomba` (que se encarga de esa logica).
-    fisica.agregar_funcion_de_colision(jugador, bombas, estalla_bomba, null, this);
+    fisica.agregar_funcion_de_colision(jugador, bombas, estalla_bomba);
 }
 
 // Configuracion del juego.
@@ -240,16 +194,6 @@ var config = {
 // Crear un juego nuevo con las opciones anteriores.
 var juego = new Phaser.Game(config);
 
-// Variables globales utilizadas a traves de distintas funciones.
-var jugador;
-var estrellas;
-var bombas;
-var plataformas;
-var flechas_teclado;
-var valor_puntaje = 0;
-var fin_del_juego = false;
-var texto_puntaje;
-
 // Funcion que carga las imagenes de los distintos objetos, podemos ver
 // los originales llendo a http://localhost:8080/assets.
 function cargar_imagenes ()
@@ -279,7 +223,8 @@ function actualizar_escena()
         return;
     }
 
-// FIXME:nombre de las flechas.
+    // FIXME:nombre de las flechas.
+
     // SI la flecha de la izquierda esta presionada:
     if (flechas_teclado.left.isDown)
     {
@@ -308,8 +253,21 @@ function actualizar_escena()
         jugador.anims.play('quieto');
     }
 
-    if (flechas_teclado.up.isDown && jugador.body.touching.down)
+    // SI:
+    if (
+        // la flecha hacia abajo esta presionada 
+        flechas_teclado.up.isDown
+        // Y TAMBIEN
+        &&                           
+        // el cuerpo del jugador esta tocando "algo" abajo
+        // (como el piso de una plataforma, pero tambien
+        //  puede ser una estrella o cualquier otro cuerpo
+        //  fisico).
+        jugador.body.touching.down
+    )
     {
+        // Ajustamos la velocidad del jugador en Y como negativa (para que
+        // vaya hacia arriba), o sea, "salte".
         jugador.setVelocityY(-330);
     }
 }
@@ -367,7 +325,7 @@ function recolectar_estrella (jugador, estrella)
 function estalla_bomba(jugador, bomba)
 {
     // Paramos la fisica del juego, todo se queda quieto.
-    this.physics.pause();
+    escena.physics.pause();
 
     // Pintamos al jugador de rojo:
     jugador.setTint(0xff0000);
@@ -380,6 +338,72 @@ function estalla_bomba(jugador, bomba)
 
     // Marcamos el fin del juego prendiendo esta variable:
     fin_del_juego = true;
+}
+
+// Variables globales utilizadas a traves de distintas funciones.
+var jugador;
+var estrellas;
+var bombas;
+var plataformas;
+var flechas_teclado;
+var valor_puntaje = 0;
+var fin_del_juego = false;
+var texto_puntaje;
+
+// Funciones en español
+// ====================
+//
+// Estas funciones llaman a su vez a su contraparte dentro de `escena`
+// que pertenecen a la API de Phaser (en ingles), ver
+// https://photonstorm.github.io/phaser3-docs/Phaser.Scene.html.
+
+// Este objeto contiene a todos los elementos que vemos en la escena
+// (el jugador, las plataformas, las estrellas, las bombas, etc).
+var escena;
+
+// Agrega una imagen (ya cargada en `cargar_imagenes` bajo el `nombre`
+// designado) en la posicion indicada por la coordenada (`x`, `y`).
+var agregar_imagen = function(x, y, nombre) {
+    return escena.add.image(x, y, nombre)
+}
+
+// Agrega una animacion a la escena para ser utilizada por alguno de
+// los sprites del juegeo (en este caso el `jugador`).
+var agregar_animacion = function(configuracion) {
+    return escena.anims.create(configuracion)
+}
+
+var agregar_texto = function(x, y, texto, configuracion) {
+    return escena.add.text(x, y, texto, configuracion)
+}
+
+// Esta variable contiene todas las funciones que utilizadan el engine
+// de fisica de tipo `Arcade` (ver
+// https://photonstorm.github.io/phaser3-docs/Phaser.Physics.Arcade.ArcadePhysics.html).
+var fisica = {};
+
+fisica.agregar_grupo_estatico = function() {
+    return escena.physics.add.staticGroup();
+}
+
+fisica.agregar_grupo_dinamico = function() {
+    return escena.physics.add.group();
+}
+
+fisica.agregar_sprite = function(x, y, imagen) {
+    return escena.physics.add.sprite(x, y, imagen);
+}
+
+fisica.agregar_regla_colision = function(objeto_1, objeto_2) {
+    return escena.physics.add.collider(objeto_1, objeto_2);
+}
+
+fisica.agregar_funcion_de_solapamiento = function(objeto_1, objeto_2, funcion) {
+    return escena.physics.add.overlap(objeto_1, objeto_2, funcion);
+}
+
+fisica.agregar_funcion_de_colision = function(objeto_1, objeto_2, funcion) {
+    return escena.physics.add.collider(objeto_1, objeto_2, funcion);
 }
 
 </script>
