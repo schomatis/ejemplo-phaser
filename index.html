@@ -3,7 +3,17 @@
 <head> 
     <meta charset="UTF-8" />
     <title>Primer ejemplo con la herramienta Phaser</title>
-    <script src="//cdn.jsdelivr.net/npm/phaser@3.11.0/dist/phaser.js"></script>
+
+<!-- Evitamos cachear el phaser.js para poder hacer cambios sobre el, sacado de: https://www.willmaster.com/library/web-content-prep/preventing-browser-cache.php -->
+
+<!--
+    <script src="phaser.js"></script>
+-->
+
+    <script type="text/javascript">
+    document.write('<scr'+'ipt src="phaser.js?'+Math.random()+'" type="text/javascript"></scr'+'ipt>');
+    </script>
+
     <style type="text/css">
         body {
             margin: 0;
