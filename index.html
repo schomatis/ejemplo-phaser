@@ -54,6 +54,10 @@ function crear()
     // Podemos ignorar esta linea.
     escena = this;
 
+    escena.input.keyboard.on('keydown_P', function (event) {
+        escena.physics.world.isPaused = !escena.physics.world.isPaused;
+    });
+
     // Tal vez esto deberia estar en el preload().
     // agregar_imagen = this.add.image.bind(this);
 
@@ -69,15 +73,17 @@ function crear()
     plataformas.create(600, 400, 'piso');
     plataformas.create(50, 250, 'piso');
     plataformas.create(750, 220, 'piso');
-    plataformas.create(400, 568, 'piso').setScale(2).refreshBody();
+    plataformas.create(400, 568, 'piso').setScale(2).refreshBody().body.gameObject.setData('piso', 'esta es la plataforma de mas abajo');;
     // A la ultima plataforma que creamos la agrandamos por 2 (`setScale`).
 
     // Agregamos al protagonista.
-    jugador = fisica.agregar_sprite(100, 450, 'chabon');
+    jugador = fisica.agregar_sprite(350, 450, 'chabon');
     // Le ponemos un rebote.
     jugador.setBounce(0.2);
     // Le decimos al juego que no lo deje escapar de la escena, que rebote.
     jugador.setCollideWorldBounds(true);
+
+    jugador.body.gameObject.setData('jugador', 'soy yo!!');
 
     // Cramos las animaciones para nuestro jugador que van a aparecer cuando
     // corre o esta quieto.
@@ -153,6 +159,14 @@ function crear()
             fill: '#000'      // Color.
         }
     );
+    agregar_texto(400, 16, 'P: pausar fisica',
+        {
+            fontSize: '32px', // Tamaño.
+            fill: '#000'      // Color.
+        }
+    );
+
+
 
     // Agregamos reglas para que el juego active las colisiones entre distintos
     // objetos fisicos creados (sino las agregamos los objectos pasan unos sobre
@@ -188,7 +202,9 @@ var config = {
             // fisicos (que no necesariamente coincidan con las imagenes
             // que los representan). Para activarlo cambiar el `false`
             // (apagado) a `true` (prendido).
-            debug: false
+            debug: false,
+            overlapBias: 20,
+
         },
         default: 'arcade',
     },
@@ -267,13 +283,6 @@ function actualizar_escena()
     if (
         // la flecha hacia abajo esta presionada 
         flechas_teclado.up.isDown
-        // Y TAMBIEN
-        &&                           
-        // el cuerpo del jugador esta tocando "algo" abajo
-        // (como el piso de una plataforma, pero tambien
-        //  puede ser una estrella o cualquier otro cuerpo
-        //  fisico).
-        jugador.body.touching.down
     )
     {
         // Ajustamos la velocidad del jugador en Y como negativa (para que
@@ -296,9 +305,11 @@ function recolectar_estrella (jugador, estrella)
     //                     ^ texto      ^ numero (variable) que aumenta
     //                                     en cada llamada a la funcion.
 
+    jugador.setScale(1, Math.min(5, (jugador.scaleY * 1.25)));
+
     // SI ahora el grupo de las estrellas no tienen ninguna activa (porque
     // el jugador ya recolecto todas):
-    if (estrellas.countActive(true) === 0)
+    // if (estrellas.countActive(true) === 0)
     {
         // Volvemos a activar todas las estrellas prendiendo nuevamente,
         // para esto pasamos por cada `estrella` del grupo `estrellas`:
@@ -309,25 +320,6 @@ function recolectar_estrella (jugador, estrella)
             estrella.enableBody(true, estrella.x, 0, true, true);
         });
 
-        // Ahora creamos una bomba, elegimos primero un valor aleatorio para el X
-        // entre 0 (extremo izquierdo) y 800 (extremo derecho).
-        var bomba_x = Phaser.Math.Between(0, 800);
-        // Creamos la bomba con ese X y un Y fijo.
-        var nueva_bomba = bombas.create(bomba_x, 16, 'bomba');
-        // Ajustamos su rebote:
-        nueva_bomba.setBounce(1);
-        // Decimos que no puede escapar del mundo, o sea, rebota contra
-        // los extremos de la escena (si pasamos el `true` a `false`
-        // deshabilitamos esta regla):
-        nueva_bomba.setCollideWorldBounds(true);
-        // Elegimos un valor aleatorio para su velocidad en X:
-        var velocidad_x = Phaser.Math.Between(-200, 200);
-        // y la ajustamos acorde con un valor de velocidad en Y positivo
-        // (para que se diriga hacia abajo):
-        nueva_bomba.setVelocity(velocidad_x, 20);
-        // Le decimos al juego que la bomba este afectada por la gravedad
-        // (para apagar esto pasar de `true` a `false`):
-        nueva_bomba.allowGravity = true;
     }
 }
 
