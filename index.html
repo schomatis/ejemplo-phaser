@@ -324,20 +324,21 @@ function recolectar_estrella (jugador, estrella)
 // Funcion que se llama cuando el jugador choca contra una bomba.
 function estalla_bomba(jugador, bomba)
 {
-    // Paramos la fisica del juego, todo se queda quieto.
-    escena.physics.pause();
+    // FIXME: Agregar algun tipo de señal para que se vea que reiniciamos
+    //  el juego, por ejemplo, dejar al jugador en rojo por unos segundos
+    //  (y la escena congelada) antes de reiniciar el estado del juego
+    //  (resto de esta funcion).
 
-    // Pintamos al jugador de rojo:
-    jugador.setTint(0xff0000);
+    bombas.clear(true, true);
 
-    // Dejamos la animacion del jugador `quieto` (en vez de la de
-    // caminar a la derecha o izquierda). Esto es necesario porque
-    // aunque la parte fisica del juego (choque de los objetos en
-    // movimiento) se detenga las animaciones se controlan aparte.
-    jugador.anims.play('quieto');
+    estrellas.children.iterate(function (estrella) {
+        estrella.enableBody(true, estrella.x, 0, true, true);
+    });
+    // FIXME: Copiado de arriba, deberia estar en una funcion para no repetir codigo.
 
-    // Marcamos el fin del juego prendiendo esta variable:
-    fin_del_juego = true;
+    // FIXME: Reiniciar puntaje.
+
+    // FIXME: Reiniciar posicion del jugador.
 }
 
 // Variables globales utilizadas a traves de distintas funciones.
