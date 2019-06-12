@@ -128,6 +128,7 @@ function crear()
         // y lo aplicamos a *esta* estrella (cada estrella tendra su
         // propio rebote distinto a las otras).
         estrella.setBounceY(rebote_aleatorio);
+        estrella.setCollideWorldBounds(true);
     });
 
     // Similar a las estrellas, creamos *otro* grupo dinamico para las bombas,
@@ -255,7 +256,7 @@ function actualizar_escena()
 
     // SI:
     if (
-        // la flecha hacia abajo esta presionada 
+        // la flechita arriba esta presionada 
         flechas_teclado.up.isDown
         // Y TAMBIEN
         &&                           
@@ -340,9 +341,6 @@ function recolectar_estrella (jugador, estrella)
         // y la ajustamos acorde con un valor de velocidad en Y positivo
         // (para que se diriga hacia abajo):
         nueva_bomba.setVelocity(velocidad_x, 20);
-        // Le decimos al juego que la bomba este afectada por la gravedad
-        // (para apagar esto pasar de `true` a `false`):
-        nueva_bomba.allowGravity = true;
     }
 }
 
