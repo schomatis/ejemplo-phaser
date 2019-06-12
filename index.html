@@ -270,6 +270,31 @@ function actualizar_escena()
         // vaya hacia arriba), o sea, "salte".
         jugador.setVelocityY(-330);
     }
+
+    // Misma logica de movimiento pero con el puntero.
+    var puntero = escena.input.activePointer;
+    if (puntero.isDown) {
+        // Capturamos la posicions X/Y de donde se hizo clic/contacto.
+        var tocoX = puntero.x;
+        var tocoY = puntero.y;
+
+        if (tocoX < jugador.x)
+        {
+            jugador.setVelocityX(-160);
+
+            jugador.anims.play('corre_a_la_izquierda', true);
+        }
+        else
+        {
+            jugador.setVelocityX(160);
+
+            jugador.anims.play('corre_a_la_derecha', true);
+        }
+
+        if (jugador.y - tocoY > 150) {
+            jugador.setVelocityY(-330);
+        }
+    }
 }
 
 // Funciona que se ejecuta cuando el jugador recolecta una estrella.
